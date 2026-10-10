@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="ChaosHouse.Core/ChaosHouse.Core.csproj" />
+  <Project Path="ChaosHouse.Wpf/ChaosHouse.Wpf.csproj" />
+</Solution>

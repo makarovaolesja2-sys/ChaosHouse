@@ -1,0 +1,122 @@
+<Window x:Class="ChaosHouse.Wpf.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Kaosemaja – pöörane maailm"
+        Height="500" Width="850">
+
+    <Grid Margin="10">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="250"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0" Margin="0,0,10,0">
+            <TextBlock Text="Kaosemaja elanikud:"
+                       FontWeight="Bold"
+                       Margin="0,0,0,5"/>
+
+            <ListBox x:Name="MembersListBox" Height="250">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Text="["
+                                       FontWeight="Bold"
+                                       Foreground="Blue"/>
+                            <TextBlock Text="{Binding TypeName}"
+                                       FontWeight="Bold"
+                                       Foreground="Blue"/>
+                            <TextBlock Text="] "
+                                       FontWeight="Bold"
+                                       Foreground="Blue"/>
+                            <TextBlock Text="{Binding Name}"/>
+                        </StackPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+
+            <UniformGrid Columns="2" Margin="0,10,0,0">
+                <Button Content="Lisa külmkapp"
+                        Click="AddFridge_Click"
+                        Margin="2"/>
+                <Button Content="Lisa kummitus"
+                        Click="AddGhost_Click"
+                        Margin="2"/>
+                <Button Content="Lisa leiutaja"
+                        Click="AddInventor_Click"
+                        Margin="2"/>
+                <Button Content="Eemalda elanik"
+                        Click="Remove_Click"
+                        Margin="2"
+                        Background="MistyRose"/>
+            </UniformGrid>
+        </StackPanel>
+
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0"
+                        Margin="0,0,0,10"
+                        DataContext="{Binding SelectedItem,
+                            ElementName=MembersListBox}">
+
+                <TextBlock Text="Valitud elanik:"
+                           FontSize="14"
+                           FontWeight="Bold"/>
+
+                <StackPanel Orientation="Horizontal" Margin="0,5">
+                    <TextBlock Text="Nimi: "/>
+                    <TextBlock Text="{Binding Name,
+                        FallbackValue='Pole valitud'}"
+                        FontWeight="Bold"/>
+                    <TextBlock Text=" (ID: " Margin="10,0,0,0"/>
+                    <TextBlock Text="{Binding Id, FallbackValue='-'}"/>
+                    <TextBlock Text=")"/>
+                </StackPanel>
+
+                <TextBlock Text="Energiatase:"/>
+
+                <ProgressBar Value="{Binding Energy,
+                                    Mode=OneWay,
+                                    FallbackValue=0}"
+                             Height="15"
+                             Minimum="0"
+                             Maximum="100"
+                             Foreground="Green"
+                             Margin="0,2,0,5"/>
+            </StackPanel>
+
+            <StackPanel Grid.Row="1" Margin="0,0,0,10">
+                <TextBlock Text="CrazyAction-i parameeter
+                    (nt lock, unlock, 80 või vidina nimi):"/>
+
+                <DockPanel Margin="0,5,0,0">
+                    <Button x:Name="ActionBtn"
+                            Content="Käivita tegevus"
+                            DockPanel.Dock="Right"
+                            Padding="10,0"
+                            Click="ActionBtn_Click"/>
+
+                    <TextBox x:Name="InputTextBox"
+                             Margin="0,0,10,0"
+                             VerticalContentAlignment="Center"/>
+                </DockPanel>
+            </StackPanel>
+
+            <DockPanel Grid.Row="2">
+                <TextBlock Text="Maja sündmuste ajalugu:"
+                           DockPanel.Dock="Top"
+                           FontWeight="Bold"/>
+
+                <TextBox x:Name="LogTextBox"
+                         IsReadOnly="True"
+                         VerticalScrollBarVisibility="Auto"
+                         TextWrapping="Wrap"
+                         Background="WhiteSmoke"/>
+            </DockPanel>
+        </Grid>
+    </Grid>
+</Window>
