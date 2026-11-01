@@ -1,9 +1,13 @@
 ﻿using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using ChaosHouse.Core;
+using ChaosHouse.Core.Simulation;
 
 namespace ChaosHouse.Core.ViewModels
 {
@@ -19,6 +23,14 @@ namespace ChaosHouse.Core.ViewModels
         private string _searchText = "";
         private string _logText = "";
         private int _counter = 1;
+        private readonly WorldSimulationService _simulationService = new();
+        private CancellationTokenSource? _simulationCancellation;
+        private bool _isSimulationRunning;
+        private int _workUnits = 20_000_000;
+        private string _simulationMode = "Järjestikune";
+        private string _simulationReport = "Vali vähemalt kolm objekti ja käivita arvutus.";
+        private string _simulationTotal = "";
+        private (string Fingerprint, string Mode, SimulationResult[] Results)? _previousSimulation;
 
         public ObservableCollection<string> RepositoryTypes { get; } =
             new()
@@ -30,6 +42,48 @@ namespace ChaosHouse.Core.ViewModels
 
         public ObservableCollection<HouseMember> HouseMembers { get; } = new();
         public ObservableCollection<HouseMember> VisibleMembers { get; } = new();
+        public ObservableCollection<SimulationTarget> SimulationTargets { get; } = new();
+        public ObservableCollection<string> SimulationModes { get; } = new() { "Järjestikune", "Paralleelne" };
+
+        public int WorkUnits
+        {
+            get => _workUnits;
+            set { if (_workUnits != value) { _workUnits = value; OnPropertyChanged(); } }
+        }
+
+        public string SimulationMode
+        {
+            get => _simulationMode;
+            set { if (_simulationMode != value) { _simulationMode = value; OnPropertyChanged(); } }
+        }
+
+        public bool IsSimulationRunning
+        {
+            get => _isSimulationRunning;
+            private set
+            {
+                if (_isSimulationRunning == value) return;
+                _isSimulationRunning = value;
+                OnPropertyChanged();
+                OnPropertyChanged(nameof(CanEditSimulationTargets));
+                RunSimulationCommand.RaiseCanExecuteChanged();
+                CancelSimulationCommand.RaiseCanExecuteChanged();
+            }
+        }
+
+        public bool CanEditSimulationTargets => !IsSimulationRunning;
+
+        public string SimulationReport
+        {
+            get => _simulationReport;
+            private set { if (_simulationReport != value) { _simulationReport = value; OnPropertyChanged(); } }
+        }
+
+        public string SimulationTotal
+        {
+            get => _simulationTotal;
+            private set { if (_simulationTotal != value) { _simulationTotal = value; OnPropertyChanged(); } }
+        }
 
         public HouseMember? SelectedMember
         {
@@ -116,6 +170,8 @@ namespace ChaosHouse.Core.ViewModels
         public RelayCommand AddInventorCommand { get; }
         public RelayCommand RemoveCommand { get; }
         public RelayCommand ExecuteActionCommand { get; }
+        public RelayCommand RunSimulationCommand { get; }
+        public RelayCommand CancelSimulationCommand { get; }
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
@@ -142,6 +198,14 @@ namespace ChaosHouse.Core.ViewModels
                 _ => ExecuteAction(),
                 _ => SelectedMember != null
                      && !string.IsNullOrWhiteSpace(InputText));
+
+            RunSimulationCommand = new RelayCommand(
+                _ => _ = RunSimulationAsync(),
+                _ => !IsSimulationRunning);
+
+            CancelSimulationCommand = new RelayCommand(
+                _ => _simulationCancellation?.Cancel(),
+                _ => IsSimulationRunning);
 
             AddFridge(new TalkingFridge(NewId(), "Sigmund"));
             AddGhost(new Ghost(NewId(), "Kasper"));
@@ -272,9 +336,133 @@ namespace ChaosHouse.Core.ViewModels
 
         private void AfterCollectionChanged()
         {
+            SynchronizeSimulationTargets();
             RefreshVisibleMembers();
             OnPropertyChanged(nameof(GroupedMemberSummary));
         }
+
+        private void SynchronizeSimulationTargets()
+        {
+            var currentIds = HouseMembers.Select(member => member.Id).ToHashSet();
+            foreach (SimulationTarget target in SimulationTargets.Where(target => !currentIds.Contains(target.Member.Id)).ToList())
+                SimulationTargets.Remove(target);
+
+            foreach (HouseMember member in HouseMembers)
+            {
+                if (SimulationTargets.All(target => target.Member.Id != member.Id))
+                    SimulationTargets.Add(new SimulationTarget(member) { IsSelected = true });
+            }
+        }
+
+        private async Task RunSimulationAsync()
+        {
+            SimulationTarget[] chosen = SimulationTargets.Where(target => target.IsSelected).ToArray();
+            if (chosen.Length < 3)
+            {
+                SimulationReport = "Vali arvutuseks vähemalt kolm maailma objekti.";
+                return;
+            }
+            if (WorkUnits < 1 || WorkUnits > 50_000_000)
+            {
+                SimulationReport = "Töömaht peab olema vahemikus 1 kuni 50 000 000 tsüklit objekti kohta.";
+                return;
+            }
+
+            SimulationSnapshot[] snapshots = chosen.Select(target => target.Capture()).ToArray();
+            int workUnits = WorkUnits;
+            string mode = SimulationMode;
+            string fingerprint = string.Join("|", snapshots.Select(snapshot =>
+                $"{snapshot.Id}:{snapshot.Name}:{snapshot.TypeName}:{snapshot.Energy}:{snapshot.InjectFailure}")) + $"|{workUnits}";
+
+            _simulationCancellation = new CancellationTokenSource();
+            CancellationToken token = _simulationCancellation.Token;
+            IsSimulationRunning = true;
+            SimulationTotal = "Arvutus käib…";
+            SimulationReport = $"Režiim: {mode}; objekte: {snapshots.Length}; töömaht: {workUnits:N0} tsüklit objekti kohta.{Environment.NewLine}" +
+                "Sisend on käivituse alguses hetktõmmisena fikseeritud.";
+            var total = Stopwatch.StartNew();
+            SimulationResult[] results;
+            string? orchestrationError = null;
+
+            try
+            {
+                if (mode == "Paralleelne")
+                {
+                    Task<SimulationResult>[] tasks = snapshots
+                        .Select(snapshot => Task.Run(() => _simulationService.Calculate(snapshot, workUnits, token)))
+                        .ToArray();
+                    results = await Task.WhenAll(tasks);
+                }
+                else
+                {
+                    var sequentialResults = new List<SimulationResult>(snapshots.Length);
+                    foreach (SimulationSnapshot snapshot in snapshots)
+                    {
+                        if (token.IsCancellationRequested)
+                        {
+                            sequentialResults.Add(new SimulationResult(snapshot.Name, SimulationStatus.Cancelled,
+                                "Töö jäi ühise tühistamise tõttu alustamata.", TimeSpan.Zero));
+                            continue;
+                        }
+
+                        Task<SimulationResult> task = Task.Run(
+                            () => _simulationService.Calculate(snapshot, workUnits, token));
+                        try { sequentialResults.Add(await task); }
+                        catch (OperationCanceledException)
+                        {
+                            sequentialResults.Add(new SimulationResult(snapshot.Name, SimulationStatus.Cancelled,
+                                "Töö tühistati enne käivitumist.", TimeSpan.Zero));
+                        }
+                    }
+                    results = sequentialResults.ToArray();
+                }
+            }
+            catch (Exception ex)
+            {
+                orchestrationError = $"Tööde käivitamise viga: {ex.Message}";
+                results = Array.Empty<SimulationResult>();
+            }
+            finally
+            {
+                total.Stop();
+                _simulationCancellation?.Dispose();
+                _simulationCancellation = null;
+                IsSimulationRunning = false;
+            }
+
+            SimulationTotal = $"Kogu töö aeg: {total.Elapsed.TotalSeconds:F3} s";
+            SimulationReport = string.Join(Environment.NewLine, results.Select(result =>
+                $"{result.ObjectName} | {StatusText(result.Status)} | {result.Details} | {result.Duration.TotalSeconds:F3} s"));
+            if (orchestrationError != null)
+                SimulationReport += Environment.NewLine + orchestrationError;
+
+            if (_previousSimulation is { } previous
+                && previous.Fingerprint == fingerprint
+                && previous.Mode != mode)
+            {
+                bool same = previous.Results.Length == results.Length
+                    && previous.Results.Zip(results).All(pair =>
+                        pair.First.Status == pair.Second.Status
+                        && pair.First.Checksum == pair.Second.Checksum
+                        && pair.First.Details == pair.Second.Details);
+                SimulationReport += Environment.NewLine + Environment.NewLine +
+                    $"Võrdlus režiimiga {previous.Mode}: {(same ? "kõigi objektide tulemused on samad" : "tulemustes on erinevusi")}.";
+            }
+
+            _previousSimulation = (fingerprint, mode, results);
+            SimulationReport += Environment.NewLine + SimulationTotal;
+            AddLog($"{mode} arvutus lõpetas: {results.Count(result => result.Status == SimulationStatus.Success)} õnnestus, " +
+                $"{results.Count(result => result.Status == SimulationStatus.Error)} viga, " +
+                $"{results.Count(result => result.Status == SimulationStatus.Cancelled)} tühistatud. {SimulationTotal}");
+        }
+
+        private static string StatusText(SimulationStatus status) => status switch
+        {
+            SimulationStatus.Success => "Õnnestus",
+            SimulationStatus.Error => "Viga",
+            SimulationStatus.Cancelled => "Tühistatud",
+            _ => status.ToString()
+        };
 
         private void RefreshVisibleMembers()
         {
