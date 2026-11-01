@@ -83,7 +83,7 @@ Lisaks kasutan `DataTemplate`-it, et kuvada iga elaniku tüüpi ja nime ühtses 
 
 - Kaasüliõpilane: [nimi]
 - Issue: https://github.com/makarovaolesja2-sys/ChaosHouse/issues/1
-- Pull Request: [Pull Request URL]
+- Pull Request:https://github.com/makarovaolesja2-sys/ChaosHouse/pull/3
 - Ühendamine `main`-haruga: [kuupäev ja tulemus]
 
 Kaasüliõpilase muudatus lisatakse eraldi harus ning kontrollitakse enne ühendamist `main`-haruga. Pull Request seotakse vastava Issue'ga.
@@ -97,3 +97,25 @@ Kontrollisin rakenduse käivitamist, energia muutumist, sisendi valideerimist ja
 ## 11. Lõplik kontroll
 
 Enne esitamist kloonin repositooriumi uude kausta, avan lahenduse kloonitud koopiast ning kontrollin, et see kompileerub ja käivitub ilma algse arenduskeskkonna lisaseadistusteta.
+
+## 12. Vol.3 – CPU-arvutuse demo
+
+Kaosemaja WPF-rakendus arvutab valitud tegelaste andmete hetktõmmise põhjal igale objektile deterministliku kontrollsumma.
+
+### Käivitamine
+
+Eeldused: Windows, Visual Studio koos .NET desktop development töökoormusega ja .NET 10 SDK.
+
+1. Ava `ChaosHouse.slnx` Visual Studios.
+2. Vali `ChaosHouse.Wpf` käivitusprojektiks.
+3. Käivita `F5`-ga.
+
+### Demo
+
+1. Vali arvutuse tabelis vähemalt kolm objekti. Vaikimisi on valitud kolm algset elanikku. Töömaht on tsüklite arv objekti kohta.
+2. Käivita režiim **Järjestikune**. Järgmine arvutus algab pärast eelmise lõppu.
+3. Käivita samade objektide ja töömahuga režiim **Paralleelne**. Arvutused käivitatakse `Task.Run`-iga ja neid oodatakse `Task.WhenAll`-iga. Võrdle kontrollsummasid ja aega.
+4. Tühistamise näitamiseks suurenda töömahtu, käivita arvutus ja vajuta **Tühista**. Kõik tööd kasutavad ühist `CancellationToken`-it.
+5. Vea näitamiseks märgi ühe objekti real **Demoviga**. Selle objekti viga kuvatakse raportis ning teised arvutused jätkuvad.
+
+Raportis kuvatakse objekti nimi, lõppolek, tulemus või veateade, objekti arvutuse kestus ja kogu töö aeg (`Stopwatch`). Arvutused käivad taustal, et kasutajaliides jääks reageerivaks.
