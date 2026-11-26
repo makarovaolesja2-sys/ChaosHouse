@@ -1,5 +1,4 @@
-﻿
-using System;
+﻿using System;
 
 namespace ChaosHouse.Core
 {
@@ -11,6 +10,13 @@ namespace ChaosHouse.Core
             : base(id, name, "Rääkiv külmkapp")
         {
             IsLocked = false;
+        }
+
+        public TalkingFridge(string id, string name, int energy, bool isLocked)
+            : base(id, name, "Rääkiv külmkapp")
+        {
+            IsLocked = isLocked;
+            RestoreEnergy(energy);
         }
 
         public string CookSomething() =>

@@ -1,4 +1,5 @@
-﻿
+﻿using System;
+
 namespace ChaosHouse.Core
 {
     public class Ghost : HouseMember, IScare
@@ -9,6 +10,16 @@ namespace ChaosHouse.Core
             : base(id, name, "Kummitus")
         {
             SpookinessLevel = 50;
+        }
+
+        public Ghost(string id, string name, int energy, int spookinessLevel)
+            : base(id, name, "Kummitus")
+        {
+            if (spookinessLevel < 0 || spookinessLevel > 100)
+                throw new ArgumentOutOfRangeException(nameof(spookinessLevel));
+
+            SpookinessLevel = spookinessLevel;
+            RestoreEnergy(energy);
         }
 
         public string ScareSomeone() =>

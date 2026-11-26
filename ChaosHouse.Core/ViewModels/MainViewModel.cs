@@ -1,4 +1,7 @@
-﻿using System;
+﻿using ChaosHouse.Core;
+using ChaosHouse.Core.Persistence;
+using ChaosHouse.Core.Simulation;
+using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
@@ -6,16 +9,71 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using ChaosHouse.Core;
-using ChaosHouse.Core.Simulation;
+using ChaosHouse.Core.Persistence;
+using ChaosHouse.Core.Persistence.DTOs;
+using System.Collections.Generic;
+using ChaosHouse.Core.Groups;
+using ChaosHouse.Core.Groups;
 
 namespace ChaosHouse.Core.ViewModels
 {
     public class MainViewModel : INotifyPropertyChanged
     {
-        private readonly Repository<TalkingFridge> _fridgeRepository = new();
-        private readonly Repository<Ghost> _ghostRepository = new();
-        private readonly Repository<Inventor> _inventorRepository = new();
+        private Repository<TalkingFridge> _fridgeRepository = new();
+        private Repository<Ghost> _ghostRepository = new();
+        private Repository<Inventor> _inventorRepository = new();
+        public ObservableCollection<HouseGroup> Groups { get; }
+            = new();
+
+        private string _newGroupName = string.Empty;
+
+        public string NewGroupName
+        {
+            get => _newGroupName;
+            set
+            {
+                _newGroupName = value;
+                OnPropertyChanged();
+                CreateGroupCommand?.RaiseCanExecuteChanged();
+            }
+        }
+
+        private HouseGroup? _selectedGroup;
+
+        public HouseGroup? SelectedGroup
+        {
+            get => _selectedGroup;
+            set
+            {
+                _selectedGroup = value;
+                SelectedGroupMember = null;
+                OnPropertyChanged();
+                AddSelectedMemberToGroupCommand?.RaiseCanExecuteChanged();
+                RemoveMemberFromGroupCommand?.RaiseCanExecuteChanged();
+            }
+        }
+
+        private HouseMember? _selectedGroupMember;
+
+        public HouseMember? SelectedGroupMember
+        {
+            get => _selectedGroupMember;
+            set
+            {
+                if (_selectedGroupMember != value)
+                {
+                    _selectedGroupMember = value;
+                    OnPropertyChanged();
+
+                    RemoveMemberFromGroupCommand?.RaiseCanExecuteChanged();
+
+                    if (value != null)
+                        SelectedMember = value;
+                }
+            }
+        }
+
+        private readonly IWorldStorage _worldStorage;
 
         private HouseMember? _selectedMember;
         private string _selectedRepositoryType = "Rääkiv külmkapp";
@@ -96,6 +154,7 @@ namespace ChaosHouse.Core.ViewModels
                     OnPropertyChanged();
                     RemoveCommand.RaiseCanExecuteChanged();
                     ExecuteActionCommand.RaiseCanExecuteChanged();
+                    AddSelectedMemberToGroupCommand?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -172,11 +231,16 @@ namespace ChaosHouse.Core.ViewModels
         public RelayCommand ExecuteActionCommand { get; }
         public RelayCommand RunSimulationCommand { get; }
         public RelayCommand CancelSimulationCommand { get; }
+        public RelayCommand CreateGroupCommand { get; }
+        public RelayCommand AddSelectedMemberToGroupCommand { get; }
+        public RelayCommand RemoveMemberFromGroupCommand { get; }
 
         public event PropertyChangedEventHandler? PropertyChanged;
 
-        public MainViewModel()
+        public MainViewModel(IWorldStorage worldStorage)
         {
+            _worldStorage = worldStorage ?? throw new ArgumentNullException(nameof(worldStorage));
+            
             _fridgeRepository.EventLogged += Repository_EventLogged;
             _ghostRepository.EventLogged += Repository_EventLogged;
             _inventorRepository.EventLogged += Repository_EventLogged;
@@ -207,11 +271,136 @@ namespace ChaosHouse.Core.ViewModels
                 _ => _simulationCancellation?.Cancel(),
                 _ => IsSimulationRunning);
 
+            CreateGroupCommand = new RelayCommand(
+                _ => CreateGroup(),
+                _ => !string.IsNullOrWhiteSpace(NewGroupName));
+
+            AddSelectedMemberToGroupCommand = new RelayCommand(
+                _ => AddSelectedMemberToGroup(),
+                _ => SelectedGroup != null && SelectedMember != null);
+
+            RemoveMemberFromGroupCommand = new RelayCommand(
+                _ => RemoveMemberFromGroup(),
+                _ => SelectedGroup != null && SelectedGroupMember != null);
+
+
             AddFridge(new TalkingFridge(NewId(), "Sigmund"));
             AddGhost(new Ghost(NewId(), "Kasper"));
             AddInventor(new Inventor(NewId(), "Tesla"));
 
             AddLog("Kaosemaja on avatud!");
+
+        }
+
+
+        private WorldDto CreateWorldDto()
+        {
+            return WorldMapper.ToDto(HouseMembers, Groups);
+        }
+        public async Task SaveWorldAsync(string path)
+        {
+            WorldDto world = CreateWorldDto();
+
+            await _worldStorage.SaveAsync(world, path);
+
+            AddLog($"Maailm salvestati faili: {path}");
+        }
+
+        public async Task LoadWorldAsync(string path)
+        {
+            WorldDto world = await _worldStorage.LoadAsync(path);
+
+            var restoredMembers = new List<HouseMember>();
+            var restoredGroups = new List<HouseGroup>();
+            var restoredIds = new HashSet<string>();
+
+            foreach (HouseMemberDto dto in world.Members)
+            {
+                if (dto == null)
+                    throw new InvalidOperationException(
+                        "Salvestus sisaldab tühja tegelast.");
+
+                if (!restoredIds.Add(dto.Id))
+                    throw new InvalidOperationException(
+                        $"Salvestuses on korduv tegelase ID: {dto.Id}");
+
+                restoredMembers.Add(WorldMapper.FromDto(dto));
+            }
+
+            var membersById = restoredMembers.ToDictionary(
+                member => member.Id);
+
+            foreach (var groupDto in world.Groups)
+            {
+                if (groupDto == null)
+                    throw new InvalidOperationException(
+                        "Salvestuses on tühi grupp.");
+
+                var group = new HouseGroup(groupDto.Id, groupDto.Name);
+
+                foreach (string memberId in groupDto.MemberIds)
+                {
+                    if (!membersById.TryGetValue(memberId, out var member))
+                        throw new InvalidOperationException(
+                            $"Grupis viidatakse puuduvale tegelasele: {memberId}");
+
+                    group.AddMember(member);
+                }
+
+                restoredGroups.Add(group);
+            }
+
+            var newFridgeRepository = new Repository<TalkingFridge>();
+            var newGhostRepository = new Repository<Ghost>();
+            var newInventorRepository = new Repository<Inventor>();
+
+            foreach (HouseMember member in restoredMembers)
+            {
+                switch (member)
+                {
+                    case TalkingFridge fridge:
+                        newFridgeRepository.AddRestored(fridge);
+                        break;
+
+                    case Ghost ghost:
+                        newGhostRepository.AddRestored(ghost);
+                        break;
+
+                    case Inventor inventor:
+                        newInventorRepository.AddRestored(inventor);
+                        break;
+
+                    default:
+                        throw new InvalidOperationException(
+                            "Salvestuses on tundmatu tegelase tüüp.");
+                }
+            }
+
+            _fridgeRepository = newFridgeRepository;
+            _ghostRepository = newGhostRepository;
+            _inventorRepository = newInventorRepository;
+
+            _fridgeRepository.EventLogged += Repository_EventLogged;
+            _ghostRepository.EventLogged += Repository_EventLogged;
+            _inventorRepository.EventLogged += Repository_EventLogged;
+
+            HouseMembers.Clear();
+
+            foreach (HouseMember member in restoredMembers)
+                HouseMembers.Add(member);
+
+            Groups.Clear();
+
+            foreach (HouseGroup group in restoredGroups)
+                Groups.Add(group);
+
+            SelectedGroup = Groups.LastOrDefault();
+
+            SelectedMember = null;
+
+            AfterCollectionChanged();
+
+            AddLog($"Maailm laaditi edukalt. Tegelasi: {HouseMembers.Count}.");
         }
 
         private string NewId()
@@ -258,6 +447,64 @@ namespace ChaosHouse.Core.ViewModels
             AfterCollectionChanged();
         }
 
+        private void CreateGroup()
+        {
+            string name = NewGroupName.Trim();
+
+            if (string.IsNullOrWhiteSpace(name))
+                return;
+
+            var group = new HouseGroup(
+                Guid.NewGuid().ToString(),
+                name);
+
+            Groups.Add(group);
+
+            SelectedGroup = group;
+            NewGroupName = string.Empty;
+
+            AddLog($"Loodi uus grupp: {name}");
+        }
+
+        private void AddSelectedMemberToGroup()
+        {
+            if (SelectedGroup == null || SelectedMember == null)
+                return;
+
+            try
+            {
+                SelectedGroup.AddMember(SelectedMember);
+
+                SelectedGroupMember = SelectedMember;
+
+                AddLog(
+                    $"Tegelane {SelectedMember.Name} lisati gruppi {SelectedGroup.Name}.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                AddLog(ex.Message);
+            }
+        }
+
+        private void RemoveMemberFromGroup()
+        {
+            if (SelectedGroup == null || SelectedGroupMember == null)
+                return;
+
+            string memberName = SelectedGroupMember.Name;
+
+            bool removed = SelectedGroup.RemoveMember(
+                SelectedGroupMember.Id);
+
+            if (removed)
+            {
+                SelectedGroupMember = null;
+
+                AddLog(
+                    $"Tegelane {memberName} eemaldati grupist {SelectedGroup.Name}.");
+            }
+        }
+
         private void RemoveMember()
         {
             if (SelectedMember == null)
@@ -282,6 +529,11 @@ namespace ChaosHouse.Core.ViewModels
                 default:
                     AddLog("Seda tegelasetüüpi ei toetata.");
                     return;
+            }
+
+            foreach (HouseGroup group in Groups)
+            {
+                group.RemoveMember(member.Id);
             }
 
             HouseMembers.Remove(member);

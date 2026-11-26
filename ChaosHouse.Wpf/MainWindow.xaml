@@ -17,7 +17,40 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="KAOSEMAJA" FontSize="24" FontWeight="Bold" Margin="0,0,0,12"/>
+		<Grid Grid.Row="0" Margin="0,0,0,12">
+			<Grid.ColumnDefinitions>
+				<ColumnDefinition Width="*"/>
+				<ColumnDefinition Width="Auto"/>
+			</Grid.ColumnDefinitions>
+
+			<TextBlock Grid.Column="0"
+					   Text="KAOSEMAJA"
+					   FontSize="24"
+					   FontWeight="Bold"
+					   VerticalAlignment="Center"/>
+
+			<StackPanel Grid.Column="1" Orientation="Horizontal">
+				<Button Content="Salvesta maailm"
+						Click="SaveWorld_Click"
+						Padding="12,7"
+						Margin="4,0"/>
+
+				<Button Content="Laadi maailm"
+						Click="LoadWorld_Click"
+						Padding="12,7"
+						Margin="4,0"/>
+
+				<Button Content="Salvesta LocalDB"
+						Click="SaveLocalDb_Click"
+						Padding="12,7"
+						Margin="4,0"/>
+
+				<Button Content="Laadi LocalDB"
+						Click="LoadLocalDb_Click"
+						Padding="12,7"
+						Margin="4,0"/>
+			</StackPanel>
+		</Grid>
 
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
@@ -25,7 +58,10 @@
                 <ColumnDefinition Width="3*"/>
             </Grid.ColumnDefinitions>
 
-            <StackPanel Grid.Column="0" Margin="0,0,12,0">
+			<ScrollViewer Grid.Column="0"
+                          VerticalScrollBarVisibility="Auto"
+                          Margin="0,0,12,0">
+				<StackPanel>
                 <TextBlock Text="Tegelaste hoidla" FontSize="18" FontWeight="Bold" Margin="0,0,0,8"/>
                 <ComboBox ItemsSource="{Binding RepositoryTypes}"
                           SelectedItem="{Binding SelectedRepositoryType, UpdateSourceTrigger=PropertyChanged}"
@@ -44,7 +80,53 @@
                 <TextBlock Text="Tegelaste arv tüübi järgi" FontWeight="Bold" Margin="0,12,0,6"/>
                 <TextBox Text="{Binding GroupedMemberSummary, Mode=OneWay}" IsReadOnly="True"
                          AcceptsReturn="True" TextWrapping="Wrap" MinHeight="48" Padding="6"/>
-            </StackPanel>
+
+
+					<TextBlock Text="Tegelaste grupid"
+							   FontSize="16"
+							   FontWeight="Bold"
+							   Margin="0,12,0,6"/>
+
+					<TextBox Text="{Binding NewGroupName, UpdateSourceTrigger=PropertyChanged}"
+							 Height="30"
+							 Margin="0,0,0,6"
+							 Padding="5"
+							 ToolTip="Uue grupi nimi"/>
+
+					<Button Content="Loo uus grupp"
+							Command="{Binding CreateGroupCommand}"
+							Margin="0,0,0,10"
+							Padding="6"/>
+
+					<TextBlock Text="Vali grupp:"/>
+
+					<ComboBox ItemsSource="{Binding Groups}"
+							  SelectedItem="{Binding SelectedGroup}"
+							  DisplayMemberPath="Name"
+							  Margin="0,4,0,8"
+							  Padding="4"/>
+
+					<Button Content="Lisa valitud tegelane gruppi"
+							Command="{Binding AddSelectedMemberToGroupCommand}"
+							Margin="0,0,0,8"
+							Padding="6"/>
+
+					<TextBlock Text="Grupi liikmed:"
+							   FontWeight="Bold"
+							   Margin="0,4,0,4"/>
+
+					<ListBox ItemsSource="{Binding SelectedGroup.Members}"
+							 SelectedItem="{Binding SelectedGroupMember}"
+							 DisplayMemberPath="Name"
+							 Height="100"
+							 Margin="0,0,0,6"/>
+
+					<Button Content="Eemalda valitud liige grupist"
+							Command="{Binding RemoveMemberFromGroupCommand}"
+							Margin="0,0,0,10"
+							Padding="6"/>
+				</StackPanel>
+			</ScrollViewer>
 
             <StackPanel Grid.Column="1">
                 <TextBlock Text="Valitud elanik" FontSize="18" FontWeight="Bold" Margin="0,0,0,8"/>

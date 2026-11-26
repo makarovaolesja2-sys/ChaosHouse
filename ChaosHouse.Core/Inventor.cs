@@ -1,4 +1,5 @@
-﻿
+﻿using System;
+
 namespace ChaosHouse.Core
 {
     public class Inventor : HouseMember, IRepair
@@ -9,6 +10,16 @@ namespace ChaosHouse.Core
             : base(id, name, "Leiutaja")
         {
             CurrentGadget = "Lihtne kruvikeeraja";
+        }
+
+        public Inventor(string id, string name, int energy, string currentGadget)
+            : base(id, name, "Leiutaja")
+        {
+            if (string.IsNullOrWhiteSpace(currentGadget))
+                throw new ArgumentException("Vidina nimi ei tohi olla tühi.", nameof(currentGadget));
+
+            CurrentGadget = currentGadget;
+            RestoreEnergy(energy);
         }
 
         public string RepairSomething() =>

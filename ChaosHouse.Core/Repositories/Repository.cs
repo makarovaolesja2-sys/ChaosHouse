@@ -39,6 +39,21 @@ namespace ChaosHouse.Core
                 new HouseEventArgs(item, $"{item.Name} lisati hoidlasse."));
         }
 
+        public void AddRestored(T item)
+        {
+            ArgumentNullException.ThrowIfNull(item);
+
+            if (_items.Exists(existing => existing.Id == item.Id))
+            {
+                throw new InvalidOperationException(
+                    $"Tegelase ID-ga {item.Id} on juba hoidlas olemas.");
+            }
+
+            _items.Add(item);
+
+            item.CrazyActionPerformed += OnMemberCrazyActionPerformed;
+        }
+
         public void Remove(T item)
         {
             if (item == null)
