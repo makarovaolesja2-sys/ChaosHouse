@@ -62,6 +62,11 @@ namespace ChaosHouse.Core
             }
         }
 
+        protected void RestoreEnergy(int energy)
+        {
+            Energy = energy;
+        }
+
         public void ChangeEnergy(int amount)
         {
             Energy = Math.Clamp(Energy + amount, 0, 100);

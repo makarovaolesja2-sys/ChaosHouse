@@ -1,121 +1,76 @@
-# Kaosemaja – Chaos House
+# ChaosHouse Vol.3
 
-## 1. Projekti eesmärk
+Kaosemaja WPF-rakenduse CPU-arvutuse demo. Tegelaste (külmkapp, kummitus, leiutaja) valitud andmetest tehakse käivituse alguses muutumatu hetktõmmis ning arvutatakse iga objekti deterministlik kontrollsumma.
 
-Kaosemaja on humoorikas WPF-rakendus, kus erinevad tegelased elavad ühes majas ja käituvad erinevalt. Projekti eesmärk on harjutada objektorienteeritud programmeerimist C# keeles, sealhulgas pärilust, liideseid, polümorfismi, valideerimist ja kollektsioonide kasutamist.
+## Käivitamine
 
-## 2. Tehnoloogiad
-
-- C#
-- .NET 10
-- WPF
-- `ObservableCollection<T>`
-- `INotifyPropertyChanged`
-- Git ja GitHub
-
-## 3. Projekti struktuur
-
-- `ChaosHouse.Core` – sisaldab baasklassi, liideseid, alamklasse, olekut ja äriloogikat.
-- `ChaosHouse.Wpf` – sisaldab kasutajaliidest, nuppe, andmesidumist ja sündmuste logi.
-
-WPF-projekt kasutab Core-projekti. Core ei sõltu WPF-ist.
-
-## 4. Klassihierarhia ja liidesed
-
-Abstraktne baasklass `HouseMember` sisaldab elaniku ID-d, nime, tüüpi ja energiataset. Kõik elanikud alustavad 100% energiaga.
-
-Alamklassid:
-
-- `TalkingFridge` – rääkimisvõimeline külmkapp, mis saab köögi lukustada ja avada.
-- `Ghost` – kummitus, kelle hirmutase on muudetav.
-- `Inventor` – leiutaja, kes saab kirjeldatud sisendi põhjal uue vidina välja mõelda.
-
-Liidesed:
-
-- `ICook` – kirjeldab toidu valmistamise tegevust.
-- `IScare` – kirjeldab hirmutamise tegevust.
-- `IRepair` – kirjeldab parandamise tegevust.
-
-`TalkingFridge` rakendab liideseid `ICook` ja `IRepair`. `Ghost` rakendab `IScare` ning `Inventor` rakendab `IRepair`.
-
-## 5. CrazyAction ja olekureeglid
-
-Kõik elanikud pakuvad meetodit `CrazyAction()`, kuid iga alamklass käitub erinevalt.
-
-- Külmkapi käsk `lock` lukustab köögi ja vähendab energiat 15 ühiku võrra.
-- Külmkapi käsk `unlock` avab luku.
-- Kummituse sisend peab olema täisarv vahemikus 0–100. Edukas tegevus vähendab energiat 10 ühiku võrra.
-- Leiutaja vajab mittetühja vidina nime. Edukas tegevus vähendab energiat 25 ühiku võrra.
-
-Energia peab jääma vahemikku 0–100. Energiat muudetakse Core-projektis ning `INotifyPropertyChanged` võimaldab WPF-il muudatusi automaatselt kuvada. Vigane sisend ei tohi muuta vastavat olekut.
-
-## 6. Käivitamine
-
-1. Klooni GitHubi repositoorium.
-2. Ava `ChaosHouse` lahendus Visual Studios.
-3. Veendu, et `ChaosHouse.Wpf` kasutab projekti `ChaosHouse.Core`.
-4. Vali `ChaosHouse.Wpf` käivitusprojektiks.
-5. Koosta lahendus käsuga **Build → Rebuild Solution**.
-6. Käivita rakendus klahviga `F5`.
-
-## 7. Kontrollitud kasutusjuhud
-
-Järgmised juhud tuleb enne esitamist rakenduses läbi proovida ja tulemused kinnitada.
-
-1. Rakendus käivitub ning kuvab kolm algset elanikku.
-2. Külmkapi käsk `lock` vähendab energiat 100%-lt 85%-le.
-3. Külmkapi korduv `lock` vähendab energiat 85%-lt 70%-le.
-4. Külmkapi käsk `unlock` avab luku.
-5. Kummituse sisend `80` muudab hirmutaseme 80%-ks ja vähendab energiat.
-6. Kummituse sisend `150` lükatakse tagasi ning hirmutase ei muutu.
-7. Leiutaja loob sisestatud nimega vidina ja energia väheneb.
-8. Tühja sisendi korral ei muudeta objekti olekut.
-9. Elaniku lisamine ja eemaldamine toimivad ning sündmused ilmuvad logisse.
-10. Valitud elaniku energiataset kuvatakse `ProgressBar`-is.
-
-## 8. Iseseisvalt õpitud WPF-element
-
-Kasutan `ProgressBar`-i elaniku energiataseme kuvamiseks. See muudab objekti oleku kasutajale arusaadavaks ning aitab näha, kuidas `INotifyPropertyChanged` ja andmesidumine võimaldavad kasutajaliidest automaatselt uuendada.
-
-Lisaks kasutan `DataTemplate`-it, et kuvada iga elaniku tüüpi ja nime ühtses loendivaates.
-
-## 9. GitHubi koostöö
-
-- Kaasüliõpilane: [nimi]
-- Issue: https://github.com/makarovaolesja2-sys/ChaosHouse/issues/1
-- Pull Request:https://github.com/makarovaolesja2-sys/ChaosHouse/pull/3
-- Ühendamine `main`-haruga: [kuupäev ja tulemus]
-
-Kaasüliõpilase muudatus lisatakse eraldi harus ning kontrollitakse enne ühendamist `main`-haruga. Pull Request seotakse vastava Issue'ga.
-
-## 10. AI kasutamine
-
-Kasutasin OpenAI ChatGPT-d C#- ja WPF-koodi mõistmiseks, eestikeelsete kasutajaliidese tekstide koostamiseks ning vigade leidmise ja parandamise juhiste saamiseks.
-
-Kontrollisin rakenduse käivitamist, energia muutumist, sisendi valideerimist ja kasutajaliidese toimimist Visual Studios. Vastutan ise lõpliku koodi, testimise ja esitamise eest ning pean suutma selgitada kõiki lahenduse osi.
-
-## 11. Lõplik kontroll
-
-Enne esitamist kloonin repositooriumi uude kausta, avan lahenduse kloonitud koopiast ning kontrollin, et see kompileerub ja käivitub ilma algse arenduskeskkonna lisaseadistusteta.
-
-## 12. Vol.3 – CPU-arvutuse demo
-
-Kaosemaja WPF-rakendus arvutab valitud tegelaste andmete hetktõmmise põhjal igale objektile deterministliku kontrollsumma.
-
-### Käivitamine
-
-Eeldused: Windows, Visual Studio koos .NET desktop development töökoormusega ja .NET 10 SDK.
+Eeldused: Windows, Visual Studio 2022 koos **.NET desktop development** töökoormusega ja .NET 10 SDK.
 
 1. Ava `ChaosHouse.slnx` Visual Studios.
-2. Vali `ChaosHouse.Wpf` käivitusprojektiks.
-3. Käivita `F5`-ga.
+2. Sea `ChaosHouse.Wpf` käivitusprojektiks.
+3. Käivita `F5`-ga. Või käivita hoidla juurkaustast `dotnet run --project ChaosHouse.Wpf\ChaosHouse.Wpf.csproj`.
 
-### Demo
+## Vol.3 arvutuse demo
 
-1. Vali arvutuse tabelis vähemalt kolm objekti. Vaikimisi on valitud kolm algset elanikku. Töömaht on tsüklite arv objekti kohta.
-2. Käivita režiim **Järjestikune**. Järgmine arvutus algab pärast eelmise lõppu.
-3. Käivita samade objektide ja töömahuga režiim **Paralleelne**. Arvutused käivitatakse `Task.Run`-iga ja neid oodatakse `Task.WhenAll`-iga. Võrdle kontrollsummasid ja aega.
-4. Tühistamise näitamiseks suurenda töömahtu, käivita arvutus ja vajuta **Tühista**. Kõik tööd kasutavad ühist `CancellationToken`-it.
-5. Vea näitamiseks märgi ühe objekti real **Demoviga**. Selle objekti viga kuvatakse raportis ning teised arvutused jätkuvad.
+1. Arvutuse tabelis on vaikimisi valitud kolm algset maailma objekti. Vali vähemalt kolm; soovi korral lisa enne uusi elanikke.
+2. Jäta töömahuks `20 000 000` tsüklit objekti kohta. Käivituse alguses fikseeritakse ID, nimi, tüüp, energia, vea demo valik ja töömaht hetktõmmiseks.
+3. Vali **Järjestikune**, käivita töö ja oota raportit. Iga objekt käivitatakse alles pärast eelmise lõppu.
+4. Muutmata sisendiga vali **Paralleelne** ja käivita uuesti. Arvutused käivitatakse `Task.Run`-iga ning oodatakse `Task.WhenAll`-iga. Raport ütleb, kas tulemused kattuvad; mõlema jooksu raport näitab objekti kestust ja kogu töö aega (`Stopwatch`).
+5. Tühistuse näitamiseks määra töömahuks näiteks `50 000 000`, käivita arvutus ja vajuta töö ajal **Tühista**. Ühine `CancellationToken` jõuab kõigile arvutustele ja arvutussilm kontrollib seda korduvalt.
+6. Vea näitamiseks märgi ühe objekti real **Demoviga** ja käivita vähemalt kolme valitud objektiga. Selle objekti veateade läheb raportisse ning teised objektid lõpetavad oma arvutuse. Järjestikuses režiimis käivituvad need samuti edasi.
 
-Raportis kuvatakse objekti nimi, lõppolek, tulemus või veateade, objekti arvutuse kestus ja kogu töö aeg (`Stopwatch`). Arvutused käivad taustal, et kasutajaliides jääks reageerivaks.
+Arvutustöö tehakse taustal, nii et WPF-i aken jääb töö ajal reageerivaks. Raportis on iga objekti nimi, lõppolek, tulemus või veateade ja kestus ning jooksu kogukestus. Võrdlus kehtib ainult siis, kui teise režiimi käivitamisel jäävad valitud objektid, vea demo märgid ja töömaht samaks.
+
+
+# ChaosHouse Vol.4
+# ChaosHouse – maailma salvestamine
+Kaosemaja WPF-rakenduse maailma salvestamise ja taastamise funktsionaalsus. Rakendus võimaldab salvestada kogu maailma JSON- ja XML-failina või SQL Server LocalDB andmebaasi ning hiljem andmed taastada.
+
+## Salvestamise võimalused
+Rakendus toetab kolme salvestusviisi:
+JSON – maailma andmed salvestatakse JSON-faili.
+XML – maailma andmed salvestatakse XML-faili.
+LocalDB – maailma andmed salvestatakse SQL Server LocalDB andmebaasi ChaosHouseDb.
+
+Salvestatakse tegelaste ID-d, nimed, konkreetsed tüübid, energia, tüübipõhised omadused ning gruppide andmed ja gruppidesse kuuluvad tegelased.
+
+## JSON- ja XML-failide kasutamine
+Käivita rakendus.
+Maailma salvestamiseks vajuta Salvesta maailm ja vali faili asukoht ning vorming (.json või .xml).
+Maailma taastamiseks vajuta Laadi maailm ja vali varem salvestatud fail.
+Rakendus taastab tegelased, nende omadused ja grupikuuluvused.
+
+## SQL Server LocalDB kasutamine
+Eeldused: Windows, SQL Server Express LocalDB ja projektis kasutatav Microsoft.Data.SqlClient pakett.
+Andmebaasi nimi: ChaosHouseDb.
+Kasutatavad tabelid:
+HouseMember – tegelaste andmed;
+HouseGroup – gruppide andmed;
+GroupMember – gruppide ja tegelaste vahelised seosed.
+Ühenduse seadistus asub klassis LocalDbWorldStorage:
+Server=(localdb)\MSSQLLocalDB;Database=ChaosHouseDb;Integrated Security=true;
+Loo SQL Server LocalDB-s andmebaas ChaosHouseDb ja vajalikud tabelid.
+Käivita rakendus.
+Maailma salvestamiseks vajuta Salvesta LocalDB.
+Maailma taastamiseks vajuta Laadi LocalDB.
+Andmete salvestamisel kasutatakse SQL-parameetreid ja tehingut, et tagada andmete terviklikkus.
+
+## Andmete taastamise ja kontrollimise demo
+Lisa maailma mitu erinevat tegelast ja loo vähemalt üks grupp.
+Salvesta maailm JSON-, XML- või LocalDB-vormingus.
+Sulge rakendus ja käivita see uuesti.
+Laadi salvestatud maailm ning kontrolli, kas tegelaste ID-d, tüübid, omadused ja grupikuuluvused on säilinud.
+Kontrolli tegelaste tegevusi ja reaktsioone pärast laadimist, näiteks käivita tegelase tegevus ning veendu, et energia ja sündmuste reaktsioonid töötavad.
+
+## Vigaste failide kontrollimine
+Rakendus kontrollib laaditud andmeid enne aktiivse maailma asendamist.
+Loo vigase sisuga JSON- või XML-fail.
+Proovi see rakenduses laadida.
+Rakendus kuvab veateate ning vigast faili ei laadita.
+Olemasolev maailm jääb muutmata.
+Laadimisel luuakse kõigepealt taastatud tegelased, hoidlad ja grupid. Aktiivne maailm asendatakse alles pärast andmete edukat lugemist ja kontrollimist.
+
+## Tehniline lahendus
+Salvestamise jaoks kasutatakse IWorldStorage liidest ja eraldi salvestusklasse JsonWorldStorage, XmlWorldStorage ning LocalDbWorldStorage. MultiFormatWorldStorage valib salvestusviisi faililaiendi järgi.
+Andmete teisendamiseks kasutatakse DTO-objekte (WorldDto, HouseMemberDto, GroupDto), et eraldada salvestatavad andmed rakenduse kasutajaliidese objektidest.
+Pärast maailma taastamist luuakse tegelased nende konkreetsete tüüpide järgi ning taastatakse vajalikud sündmuste tellimused, et rakenduse käitumine jätkuks tavapäraselt.
